@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, AppState, Text, View } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { LogOut, Map, Play, Square } from 'lucide-react-native';
-import { driverApi } from '@/api/routes';
+import { driverApi, publicApi } from '@/api/routes';
 import { DriverMap } from '@/components/driver-map';
 import { ensureTracking, getLatestFix, retryQueuedLocation, stopTracking } from '@/services/location/tracking';
 import { useAuth } from '@/stores/auth';
@@ -19,6 +19,8 @@ export default function Driver() {
   const queryClient = useQueryClient();
   const profile = useQuery({ queryKey: ['driver-me'], queryFn: driverApi.me, enabled: user?.role === 'DRIVER' });
   const current = useQuery({ queryKey: ['driver-session'], queryFn: driverApi.current, enabled: user?.role === 'DRIVER', refetchInterval: 15000 });
+  const busId = profile.data?.bus?.id;
+  const busPosition = useQuery({ queryKey: ['public-bus', busId], queryFn: () => publicApi.bus(busId!), enabled: !!busId && !!current.data?.session, refetchInterval: 3000 });
   const refreshCurrent = current.refetch;
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -35,7 +37,7 @@ export default function Driver() {
   useEffect(() => {
     const app = AppState.addEventListener('change', state => { if (state === 'active') { void refreshCurrent(); void retryQueuedLocation(); } });
     const network = NetInfo.addEventListener(state => { if (state.isConnected) void retryQueuedLocation(); });
-    const timer = setInterval(() => setTick(value => value + 1), 1000);
+    const timer = setInterval(() => setTick(Date.now()), 1000);
     return () => { app.remove(); network(); clearInterval(timer); };
   }, [refreshCurrent]);
   async function start() {
@@ -61,7 +63,10 @@ export default function Driver() {
     } finally { setBusy(false); }
   }
   const fix = getLatestFix();
-  void tick;
+  const serverSpeed = busPosition.data?.status === 'RUNNING' ? busPosition.data.location?.speed : null;
+  const localSpeed = fix && tick > 0 && tick - fix.timestamp < 10000 ? fix.coords.speed : null;
+  const currentSpeed = busPosition.data?.locationStatus === 'ONLINE' ? serverSpeed ?? localSpeed : localSpeed;
+  const displayedSpeed = currentSpeed ?? serverSpeed;
   const heroText = session ? palette.accentText : palette.inkText;
   return <Screen title="기사 대시보드" subtitle={`${profile.data?.username ?? user?.username ?? ''} 기사님`} back={false}>
     <Card tone={session ? 'accent' : 'ink'} style={{ padding: 22, gap: 18 }}>
@@ -80,7 +85,7 @@ export default function Driver() {
     {session && <Card>
       <Row style={{ justifyContent: 'space-between' }}><Label small muted>실시간 GPS</Label><StatusTag text="위치 공유 중" tone="success" /></Row>
       <Row>
-        <KeyValue label="현재 속도" value={speedText(fix?.coords.speed)} />
+        <KeyValue label={currentSpeed == null && serverSpeed != null ? '마지막 기록 속도' : '현재 속도'} value={speedText(displayedSpeed)} />
         <KeyValue label="GPS 정확도" value={fix?.coords.accuracy == null ? '-' : `±${fix.coords.accuracy.toFixed(1)}m`} />
       </Row>
     </Card>}

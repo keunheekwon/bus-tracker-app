@@ -122,7 +122,7 @@ export function LiveMap({ buses, selectedId, onSelect, height, admin = false, sh
         <Pressable accessibilityLabel="선택 해제" onPress={() => onSelect(null)} style={[styles.close, { backgroundColor: palette.sunken }]}><X size={16} color={palette.text} /></Pressable>
       </Row>
       <Row>
-        <KeyValue label="현재 속도" value={speedText(selected.location?.speed)} />
+        <KeyValue label={selected.locationStatus === 'ONLINE' ? '현재 속도' : '마지막 기록 속도'} value={speedText(selected.location?.speed)} />
         <KeyValue label="마지막 업데이트" value={agoText(selected.updatedAt)} />
       </Row>
       {(admin && selected.driver) || selected.location?.heading != null ? <Row>

@@ -20,7 +20,12 @@ export default function Home() {
   const [selected, setSelected] = useState<string | null>(null);
   const [connected, setConnected] = useState(true);
   useEffect(() => subscribeLive({
-    location: event => setLive(current => ({ ...current, [event.busId]: { status: 'RUNNING', locationStatus: 'ONLINE', updatedAt: event.updatedAt, location: { latitude: event.latitude, longitude: event.longitude, speed: event.speed, heading: event.heading, accuracy: event.accuracy, altitude: null, recordedAt: event.updatedAt } } })),
+    location: event => setLive(current => {
+      const existing = current[event.busId]?.location ?? queryClient.getQueryData<Bus[]>(['public-buses'])?.find(bus => bus.id === event.busId && bus.status === 'RUNNING')?.location;
+      const speedAge = existing ? Date.parse(event.updatedAt) - Date.parse(existing.recordedAt) : Infinity;
+      const recentSpeed = speedAge >= 0 && speedAge <= 10000 ? existing?.speed ?? null : null;
+      return { ...current, [event.busId]: { status: 'RUNNING', locationStatus: 'ONLINE', updatedAt: event.updatedAt, location: { latitude: event.latitude, longitude: event.longitude, speed: event.speed ?? recentSpeed, heading: event.heading, accuracy: event.accuracy, altitude: null, recordedAt: event.updatedAt } } };
+    }),
     status: event => { setLive(current => ({ ...current, [event.busId]: { status: event.status, locationStatus: 'OFFLINE', location: null, updatedAt: event.updatedAt } })); void queryClient.invalidateQueries({ queryKey: ['public-buses'] }); },
     connection: setConnected,
   }), [queryClient]);

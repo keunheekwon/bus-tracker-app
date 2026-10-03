@@ -22,7 +22,12 @@ export default function AdminLive() {
   const [busy, setBusy] = useState(false);
   useEffect(() => { if (ready && user?.role !== 'ADMIN') router.replace('/'); }, [ready, user]);
   useEffect(() => subscribeLive({
-    location: event => setEvents(current => ({ ...current, [event.busId]: { status: 'RUNNING', locationStatus: 'ONLINE', updatedAt: event.updatedAt, location: { latitude: event.latitude, longitude: event.longitude, speed: event.speed, heading: event.heading, accuracy: event.accuracy, altitude: null, recordedAt: event.updatedAt } } })),
+    location: event => setEvents(current => {
+      const existing = current[event.busId]?.location ?? client.getQueryData<Bus[]>(['admin-live'])?.find(bus => bus.id === event.busId && bus.status === 'RUNNING')?.location;
+      const speedAge = existing ? Date.parse(event.updatedAt) - Date.parse(existing.recordedAt) : Infinity;
+      const recentSpeed = speedAge >= 0 && speedAge <= 10000 ? existing?.speed ?? null : null;
+      return { ...current, [event.busId]: { status: 'RUNNING', locationStatus: 'ONLINE', updatedAt: event.updatedAt, location: { latitude: event.latitude, longitude: event.longitude, speed: event.speed ?? recentSpeed, heading: event.heading, accuracy: event.accuracy, altitude: null, recordedAt: event.updatedAt } } };
+    }),
     status: event => { setEvents(current => ({ ...current, [event.busId]: { status: event.status, locationStatus: 'OFFLINE', location: null, updatedAt: event.updatedAt } })); void client.invalidateQueries({ queryKey: ['admin-live'] }); },
     connection: () => {},
   }), [client]);

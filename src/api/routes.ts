@@ -10,6 +10,7 @@ export const authApi = {
 };
 export const publicApi = {
   buses: () => api.get<Bus[]>(`${prefix}/public/buses`, false),
+  bus: (id: string) => api.get<Bus>(`${prefix}/public/buses/${id}`, false),
   update: (version: string) => api.get<Update>(`${prefix}/public/app-update?${query({ platform: 'android', currentVersion: version })}`, false),
   health: () => api.get<{ status: string; database: string; redis: string }>('/health', false),
 };
