@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <mask id="windows">
+    <rect width="512" height="512" fill="#fff"/>
+    <rect x="162" y="112" width="188" height="100" rx="22" fill="#000"/>
+    <rect x="166" y="244" width="180" height="48" rx="14" fill="#000"/>
+    <rect x="166" y="316" width="180" height="48" rx="14" fill="#000"/>
+  </mask>
+  <g fill="#16181D">
+    <rect x="103" y="158" width="36" height="78" rx="12"/>
+    <rect x="373" y="158" width="36" height="78" rx="12"/>
+    <rect x="136" y="78" width="240" height="352" rx="56" mask="url(#windows)"/>
+  </g>
+</svg>

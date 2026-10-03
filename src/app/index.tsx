@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BusFront, UserRound } from 'lucide-react-native';
+import { UserRound } from 'lucide-react-native';
 import { publicApi } from '@/api/routes';
 import type { Bus } from '@/api/types';
 import { LiveMap } from '@/components/live-map';
@@ -41,7 +41,7 @@ export default function Home() {
     <SafeAreaView edges={['top']} style={styles.overlay} pointerEvents="box-none">
       <View style={styles.topRow} pointerEvents="box-none">
         <View style={[styles.brand, { backgroundColor: palette.ink }]}>
-          <View style={styles.brandMark}><BusFront size={16} color="#1A1500" /></View>
+          <Image source={require('../../assets/images/bus-tracker-icon.png')} style={styles.brandMark} />
           <Text style={[styles.brandText, { color: palette.inkText }]}>Bus Tracker</Text>
         </View>
         <Pressable onPress={() => router.push(user ? user.role === 'ADMIN' ? '/admin' : '/driver' : '/auth/login')} style={[styles.account, { backgroundColor: palette.card, borderColor: palette.line }]}>
@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, padding: 12, gap: 8 },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 6, paddingRight: 14, paddingVertical: 6, borderRadius: 999 },
-  brandMark: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#FFC21A', alignItems: 'center', justifyContent: 'center' },
+  brandMark: { width: 30, height: 30, borderRadius: 9 },
   brandText: { fontWeight: '800', fontSize: 15, letterSpacing: -0.3 },
   account: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, borderWidth: 1 },
   status: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1 },
