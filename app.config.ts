@@ -6,7 +6,7 @@ const config: ExpoConfig = {
   orientation: 'portrait', scheme: 'bustrackerapp', userInterfaceStyle: 'automatic',
   icon: './assets/images/bus-tracker-icon.png',
   android: {
-    package: 'com.kkeunhee09.bustrackerapp', versionCode: 3,
+    package: 'com.kkeunhee09.bustrackerapp', versionCode: 4,
     permissions: ['INTERNET', 'ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION', 'ACCESS_BACKGROUND_LOCATION', 'FOREGROUND_SERVICE', 'FOREGROUND_SERVICE_LOCATION', 'POST_NOTIFICATIONS', 'REQUEST_INSTALL_PACKAGES'],
     adaptiveIcon: { backgroundColor: '#FFC21A', foregroundImage: './assets/images/bus-tracker-foreground.png', monochromeImage: './assets/images/bus-tracker-foreground.png' },
   },
