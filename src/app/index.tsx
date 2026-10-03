@@ -1,98 +1,67 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { useEffect, useState } from 'react';
+import { router } from 'expo-router';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { BusFront, UserRound } from 'lucide-react-native';
+import { publicApi } from '@/api/routes';
+import type { Bus } from '@/api/types';
+import { LiveMap } from '@/components/live-map';
+import { subscribeLive } from '@/services/socket/live';
+import { useAuth } from '@/stores/auth';
+import { usePalette } from '@/theme/ui';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+export default function Home() {
+  const palette = usePalette();
+  const user = useAuth(state => state.user);
+  const queryClient = useQueryClient();
+  const { data: initial, isLoading, error, refetch } = useQuery({ queryKey: ['public-buses'], queryFn: publicApi.buses, refetchInterval: 30000 });
+  const [live, setLive] = useState<Record<string, Partial<Bus>>>({});
+  const [selected, setSelected] = useState<string | null>(null);
+  const [connected, setConnected] = useState(true);
+  useEffect(() => subscribeLive({
+    location: event => setLive(current => ({ ...current, [event.busId]: { status: 'RUNNING', locationStatus: 'ONLINE', updatedAt: event.updatedAt, location: { latitude: event.latitude, longitude: event.longitude, speed: event.speed, heading: event.heading, accuracy: event.accuracy, altitude: null, recordedAt: event.updatedAt } } })),
+    status: event => { setLive(current => ({ ...current, [event.busId]: { status: event.status, locationStatus: 'OFFLINE', location: null, updatedAt: event.updatedAt } })); void queryClient.invalidateQueries({ queryKey: ['public-buses'] }); },
+    connection: setConnected,
+  }), [queryClient]);
+  const buses = (initial ?? []).map(bus => {
+    const event = live[bus.id];
+    return event && Date.parse(event.updatedAt ?? '') > Date.parse(bus.updatedAt ?? '') ? { ...bus, ...event } : bus;
+  });
+  const running = buses.filter(bus => bus.status === 'RUNNING').length;
+  const accountLabel = user ? user.role === 'ADMIN' ? '관리자' : '기사' : '로그인';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
-
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
-  );
+  return <View style={{ flex: 1, backgroundColor: palette.background }}>
+    <LiveMap buses={buses} selectedId={selected} onSelect={setSelected} showCurrentLocation topInset={110} />
+    <SafeAreaView edges={['top']} style={styles.overlay} pointerEvents="box-none">
+      <View style={styles.topRow} pointerEvents="box-none">
+        <View style={[styles.brand, { backgroundColor: palette.ink }]}>
+          <View style={styles.brandMark}><BusFront size={16} color="#1A1500" /></View>
+          <Text style={[styles.brandText, { color: palette.inkText }]}>Bus Tracker</Text>
+        </View>
+        <Pressable onPress={() => router.push(user ? user.role === 'ADMIN' ? '/admin' : '/driver' : '/auth/login')} style={[styles.account, { backgroundColor: palette.card, borderColor: palette.line }]}>
+          <UserRound size={16} color={palette.text} /><Text style={{ color: palette.text, fontWeight: '700', fontSize: 13 }}>{accountLabel}</Text>
+        </Pressable>
+      </View>
+      <View style={[styles.status, { backgroundColor: palette.card, borderColor: palette.line }]}>
+        <View style={[styles.dot, { backgroundColor: connected ? palette.success : palette.warning }]} />
+        <Text style={{ color: palette.text, fontWeight: '700', fontSize: 13 }}>{connected ? `운행 중 ${running}대` : '재연결 중...'}</Text>
+        <Text style={{ color: palette.muted, fontSize: 13 }}>· 전체 {buses.length}대</Text>
+        {isLoading && <ActivityIndicator size="small" color={palette.text} />}
+        {error && <Pressable onPress={() => void refetch()} style={[styles.retry, { backgroundColor: palette.danger }]}><Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>다시 시도</Text></Pressable>}
+      </View>
+    </SafeAreaView>
+  </View>;
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
+  overlay: { position: 'absolute', top: 0, left: 0, right: 0, padding: 12, gap: 8 },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 6, paddingRight: 14, paddingVertical: 6, borderRadius: 999 },
+  brandMark: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#FFC21A', alignItems: 'center', justifyContent: 'center' },
+  brandText: { fontWeight: '800', fontSize: 15, letterSpacing: -0.3 },
+  account: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, borderWidth: 1 },
+  status: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  retry: { marginLeft: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
 });

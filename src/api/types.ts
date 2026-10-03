@@ -1,0 +1,14 @@
+export type Role = 'DRIVER' | 'ADMIN';
+export type User = { id: string; username: string; role: Role; bus: { id: string; name: string } | null };
+export type Tokens = { accessToken: string; refreshToken: string; user: User };
+export type LocationPoint = { id?: string; sessionId?: string; busId?: string; latitude: number; longitude: number; accuracy: number; speed: number | null; heading: number | null; altitude: number | null; recordedAt: string; receivedAt?: string };
+export type Bus = { id: string; name: string; status: 'READY' | 'RUNNING'; locationStatus: 'ONLINE' | 'STALE' | 'OFFLINE'; updatedAt: string | null; location: LocationPoint | null; driver?: { id: string; username: string } | null };
+export type Session = { id: string; busId: string; driverId: string; busName: string; driverUsername: string; startedAt: string; endedAt: string | null; distanceMeters: number; durationSeconds: number; movingSeconds: number; stoppedSeconds: number; averageSpeed: number; maxSpeed: number; gpsRecordCount: number; gpsDisconnectionCount: number; longestGpsGapSeconds: number };
+export type SessionDetail = Session & { startLocation: LocationPoint | null; endLocation: LocationPoint | null };
+export type Page<T> = { items: T[]; total: number; page: number; limit: number };
+export type AdminBus = { id: string; name: string; active: boolean; driver: { id: string; username: string } | null };
+export type AdminDriver = User & { active: boolean };
+export type Audit = { id: string; actorUserId: string | null; action: string; targetType: string; targetId: string; metadata: unknown; createdAt: string };
+export type Update = { checkAvailable: boolean; updateAvailable: boolean; forceUpdate?: boolean; latestVersion?: string; minimumVersion?: string; release?: { name: string; notes: string; publishedAt: string | null }; download?: { url: string; fileName: string; sha256?: string } };
+export type SocketLocation = { busId: string; latitude: number; longitude: number; speed: number | null; heading: number | null; accuracy: number; updatedAt: string };
+export type SocketStatus = { busId: string; status: 'RUNNING' | 'READY'; updatedAt: string };
