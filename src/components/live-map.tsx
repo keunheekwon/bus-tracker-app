@@ -15,7 +15,7 @@ export function busState(bus: Bus): { text: string; tone: Tone } {
   return { text: '운행 중', tone: 'success' };
 }
 
-function BusMarker({ bus, selected, select }: { bus: Bus; selected: boolean; select: () => void }) {
+function BusMarker({ bus, selected, following, select }: { bus: Bus; selected: boolean; following: boolean; select: () => void }) {
   const point = bus.location;
   const [coordinate, setCoordinate] = useState({ latitude: point?.latitude ?? 0, longitude: point?.longitude ?? 0 });
   const previous = useRef<LocationPoint | null>(point);
@@ -40,7 +40,7 @@ function BusMarker({ bus, selected, select }: { bus: Bus; selected: boolean; sel
   const rotation = useSmoothHeading(point?.heading);
   if (!point) return null;
   return <>
-    <Marker coordinate={coordinate} onPress={select} flat rotation={rotation} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges zIndex={selected ? 11 : 2}>
+    <Marker coordinate={coordinate} onPress={select} flat={!following} rotation={following ? 0 : rotation} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges zIndex={selected ? 11 : 2}>
       <BusIcon size={selected ? 46 : 40} body={selected ? '#FFC21A' : '#FFFFFF'} />
     </Marker>
     <Marker coordinate={coordinate} onPress={select} anchor={{ x: 0.5, y: -0.9 }} tracksViewChanges zIndex={selected ? 10 : 1}>
@@ -104,7 +104,7 @@ export function LiveMap({ buses, selectedId, onSelect, height, admin = false, sh
   return <View style={[styles.container, { backgroundColor: palette.sunken }, height === undefined ? styles.fill : { height }]}>
     {process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
       ? <MapView ref={map} provider={PROVIDER_GOOGLE} style={StyleSheet.absoluteFill} onMapReady={() => setMapReady(true)} onPanDrag={() => { if (followRef.current) setFollow(false); }} onRegionChangeComplete={() => { if (!followRef.current) void resetNorth(); }} showsUserLocation={showCurrentLocation && viewer.granted} showsMyLocationButton={false} toolbarEnabled={false} rotateEnabled={false} initialRegion={{ latitude: viewer.coordinate?.latitude ?? initial?.latitude ?? 37.5665, longitude: viewer.coordinate?.longitude ?? initial?.longitude ?? 126.978, latitudeDelta: 0.08, longitudeDelta: 0.08 }}>
-        {buses.map(bus => <BusMarker key={bus.id} bus={bus} selected={bus.id === selectedId} select={() => onSelect(bus.id)} />)}
+        {buses.map(bus => <BusMarker key={bus.id} bus={bus} selected={bus.id === selectedId} following={follow && bus.id === selectedId} select={() => onSelect(bus.id)} />)}
       </MapView>
       : <View style={styles.missing}><Text style={{ color: palette.muted, textAlign: 'center', fontWeight: '600' }}>{'Google Maps API 키를 설정한 뒤\n앱을 다시 빌드해 주세요.'}</Text></View>}
 
