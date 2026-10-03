@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Crosshair, LocateFixed, X } from 'lucide-react-native';
@@ -15,7 +15,7 @@ export function busState(bus: Bus): { text: string; tone: Tone } {
   return { text: '운행 중', tone: 'success' };
 }
 
-function BusMarker({ bus, selected, following, select }: { bus: Bus; selected: boolean; following: boolean; select: () => void }) {
+function BusMarker({ bus, selected, select }: { bus: Bus; selected: boolean; select: () => void }) {
   const point = bus.location;
   const [coordinate, setCoordinate] = useState({ latitude: point?.latitude ?? 0, longitude: point?.longitude ?? 0 });
   const previous = useRef<LocationPoint | null>(point);
@@ -39,12 +39,8 @@ function BusMarker({ bus, selected, following, select }: { bus: Bus; selected: b
   }, [point]);
   const rotation = useSmoothHeading(point?.heading);
   if (!point) return null;
-  // Bus body: flat marker rotated natively from north, so it stays aligned with the road even when the map turns.
-  // When followed, the camera already turns so travel direction is up, so the bus is drawn upright (non-flat, rotation 0)
-  // to keep its front pointing at the top of the screen regardless of camera animation timing.
-  // Name label: separate upright marker hanging below the bus.
   return <>
-    <Marker coordinate={coordinate} onPress={select} flat={!following} rotation={following ? 0 : rotation} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges zIndex={selected ? 11 : 2}>
+    <Marker coordinate={coordinate} onPress={select} flat rotation={rotation} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges zIndex={selected ? 11 : 2}>
       <BusIcon size={selected ? 46 : 40} body={selected ? '#FFC21A' : '#FFFFFF'} />
     </Marker>
     <Marker coordinate={coordinate} onPress={select} anchor={{ x: 0.5, y: -0.9 }} tracksViewChanges zIndex={selected ? 10 : 1}>
@@ -63,7 +59,12 @@ export function LiveMap({ buses, selectedId, onSelect, height, admin = false, sh
   const [mapReady, setMapReady] = useState(false);
   const [followId, setFollowId] = useState<string | null>(null);
   const follow = followId !== null && followId === selectedId;
-  const setFollow = (on: boolean) => setFollowId(on ? selectedId : null);
+  const followRef = useRef(false);
+  const setFollow = (on: boolean) => { followRef.current = on; setFollowId(on ? selectedId : null); };
+  const resetNorth = useCallback(async () => {
+    const camera = await map.current?.getCamera();
+    if (camera && !followRef.current && Math.abs(camera.heading ?? 0) > 0.5) map.current?.setCamera({ ...camera, heading: 0 });
+  }, []);
   const viewer = useViewerLocation(showCurrentLocation);
   const selected = buses.find(bus => bus.id === selectedId);
   const points = useMemo(() => buses.map(bus => bus.location).filter((point): point is LocationPoint => point !== null), [buses]);
@@ -77,8 +78,7 @@ export function LiveMap({ buses, selectedId, onSelect, height, admin = false, sh
   useEffect(() => {
     if (follow && selectedLocation) map.current?.animateCamera({ center: { latitude: selectedLocation.latitude, longitude: selectedLocation.longitude }, heading: mapHeading }, { duration: 900 });
   }, [follow, selectedLocation, mapHeading]);
-  // Leaving follow mode turns the map back to north-up.
-  useEffect(() => { if (!follow && mapReady) map.current?.animateCamera({ heading: 0 }, { duration: 500 }); }, [follow, mapReady]);
+  useEffect(() => { followRef.current = follow; if (!follow && mapReady) void resetNorth(); }, [follow, mapReady, resetNorth]);
   useEffect(() => {
     if (!mapReady) return;
     if (showCurrentLocation && viewer.coordinate && (!centered.current || (viewer.status === 'ready' && !centeredOnFreshLocation.current))) {
@@ -103,8 +103,8 @@ export function LiveMap({ buses, selectedId, onSelect, height, admin = false, sh
   const state = selected ? busState(selected) : null;
   return <View style={[styles.container, { backgroundColor: palette.sunken }, height === undefined ? styles.fill : { height }]}>
     {process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
-      ? <MapView ref={map} provider={PROVIDER_GOOGLE} style={StyleSheet.absoluteFill} onMapReady={() => setMapReady(true)} onPanDrag={() => { if (follow) setFollow(false); }} showsUserLocation={showCurrentLocation && viewer.granted} showsMyLocationButton={false} toolbarEnabled={false} rotateEnabled={false} initialRegion={{ latitude: viewer.coordinate?.latitude ?? initial?.latitude ?? 37.5665, longitude: viewer.coordinate?.longitude ?? initial?.longitude ?? 126.978, latitudeDelta: 0.08, longitudeDelta: 0.08 }}>
-        {buses.map(bus => <BusMarker key={bus.id} bus={bus} selected={bus.id === selectedId} following={follow && bus.id === selectedId} select={() => onSelect(bus.id)} />)}
+      ? <MapView ref={map} provider={PROVIDER_GOOGLE} style={StyleSheet.absoluteFill} onMapReady={() => setMapReady(true)} onPanDrag={() => { if (followRef.current) setFollow(false); }} onRegionChangeComplete={() => { if (!followRef.current) void resetNorth(); }} showsUserLocation={showCurrentLocation && viewer.granted} showsMyLocationButton={false} toolbarEnabled={false} rotateEnabled={false} initialRegion={{ latitude: viewer.coordinate?.latitude ?? initial?.latitude ?? 37.5665, longitude: viewer.coordinate?.longitude ?? initial?.longitude ?? 126.978, latitudeDelta: 0.08, longitudeDelta: 0.08 }}>
+        {buses.map(bus => <BusMarker key={bus.id} bus={bus} selected={bus.id === selectedId} select={() => onSelect(bus.id)} />)}
       </MapView>
       : <View style={styles.missing}><Text style={{ color: palette.muted, textAlign: 'center', fontWeight: '600' }}>{'Google Maps API 키를 설정한 뒤\n앱을 다시 빌드해 주세요.'}</Text></View>}
 
