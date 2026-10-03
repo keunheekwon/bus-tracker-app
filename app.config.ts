@@ -6,7 +6,7 @@ const config: ExpoConfig = {
   orientation: 'portrait', scheme: 'bustrackerapp', userInterfaceStyle: 'automatic',
   icon: './assets/images/icon.png',
   android: {
-    package: 'com.kkeunhee09.bustrackerapp', versionCode: 2,
+    package: 'com.kkeunhee09.bustrackerapp', versionCode: 3,
     permissions: ['INTERNET', 'ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION', 'ACCESS_BACKGROUND_LOCATION', 'FOREGROUND_SERVICE', 'FOREGROUND_SERVICE_LOCATION', 'POST_NOTIFICATIONS', 'REQUEST_INSTALL_PACKAGES'],
     adaptiveIcon: { backgroundColor: '#FFC21A', foregroundImage: './assets/images/android-icon-foreground.png', backgroundImage: './assets/images/android-icon-background.png', monochromeImage: './assets/images/android-icon-monochrome.png' },
   },
